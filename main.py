@@ -1,4 +1,5 @@
 # Отрисовать декорации, сделать счетчик, сделать хп и перезапуск счетчика после падения хп до 0
+# Сделать ускорение при зажатом пробеле и замедление при зажатом шифте
 
 import pygame
 import time
@@ -15,7 +16,7 @@ emulate_config = {
     'player_save':{
         'speed':8,
         'damage':1,
-        'atack_speed':1,
+        'atack_speed':0.25,
         'money_multi':1,
         'coord':[500,830],
         'color':[255,255,255],
@@ -163,14 +164,14 @@ player = Player( # Характеристики игрока
     emulate_config['player_save']['color'],
     emulate_config['player_save']['size'],
 )
-bullet = Bullets(cd_bullet=0.1) # cd_bullet содержит в себе минимальное значение в секундах между выстрелами
+bullet = Bullets(cd_bullet=emulate_config['player_save']['atack_speed']) # cd_bullet содержит в себе минимальное значение в секундах между выстрелами
 target = Target(
     size=emulate_config['target_settings']['size'],
     speed=emulate_config['target_settings']['speed'],
     cooldown=emulate_config['target_settings']['cooldown'],
 )
 
-
+mouse_lkm_down = False
 
 while True:
     # Проверка событий №1
@@ -179,7 +180,9 @@ while True:
             pygame.quit()
 
         if event.type == pygame.MOUSEBUTTONDOWN:
-            bullet.new_bullet()
+            mouse_lkm_down = True
+        if event.type == pygame.MOUSEBUTTONUP:
+            mouse_lkm_down = False
 
     # Проверка событий №2
     keys = pygame.key.get_pressed()
@@ -191,6 +194,11 @@ while True:
         player.line = None
     if keys[pygame.K_d] and keys[pygame.K_a]:
         player.line = None
+
+
+
+    if mouse_lkm_down:
+        bullet.new_bullet()
 
     start_cycle()
 
