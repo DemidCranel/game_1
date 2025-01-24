@@ -1,5 +1,7 @@
 # Отрисовать декорации, сделать счетчик, сделать хп и перезапуск счетчика после падения хп до 0
-# Сделать ускорение при зажатом пробеле и замедление при зажатом шифте
+# Сделать чтобы у мишеней было по 2 хп и когда у мишени оставалось 1 хп, то она перекрасивалась бы в желтый
+# Переделать список со всеми текущими пулями и мишенями в словарь (для реализации хп у мишеней) и адаптировать это.
+# Либо оставить список, но его содержимое будет словарем со всеми характеристиками
 
 import pygame
 import time
@@ -14,7 +16,10 @@ bullet_speed = 20
 
 emulate_config = {
     'player_save':{
-        'speed':8,
+        'hp':3,
+        'speed':9,
+        'speed_down':3,
+        'speed_up':15,
         'damage':1,
         'atack_speed':0.25,
         'money_multi':1,
@@ -31,7 +36,7 @@ emulate_config = {
 
 
 class Player():
-    def __init__(self, speed, damage, atack_speed, money_multi, coord, color, size):
+    def __init__(self, speed, damage, atack_speed, money_multi, coord, color, size, speed_down, speed_up, hp):
         self.speed = speed
         self.damage = damage
         self.atack_speed = atack_speed
@@ -40,14 +45,27 @@ class Player():
         self.color = color
         self.line = None
         self.size = size
+        self.speed_down = speed_down
+        self.speed_up = speed_up
+        self.speed_status = 0 # 0 - обычная скорость, 1 - быстрая скорость, 2 - медленная скорость
 
 
     def move(self):
         if self.line == "Right":
-            self.coord[0] += self.speed
+            if self.speed_status == 0:
+                self.coord[0] += self.speed
+            elif self.speed_status == 1:
+                self.coord[0] += self.speed_up
+            elif self.speed_status == 2:
+                self.coord[0] += self.speed_down
 
         if self.line == "Left":
-            self.coord[0] -= self.speed
+            if self.speed_status == 0:
+                self.coord[0] -= self.speed
+            elif self.speed_status == 1:
+                self.coord[0] -= self.speed_up
+            elif self.speed_status == 2:
+                self.coord[0] -= self.speed_down
 
         if self.coord[0] + self.size / 2 > screen_xy[0]:
             self.coord[0] = screen_xy[0] - self.size / 2
@@ -156,13 +174,16 @@ def start_cycle():
 
 # Тут создаются объекты класса и так же происходит их настройка
 player = Player( # Характеристики игрока
-    emulate_config['player_save']['speed'],
-    emulate_config['player_save']['damage'],
-    emulate_config['player_save']['atack_speed'],
-    emulate_config['player_save']['money_multi'],
-    emulate_config['player_save']['coord'],
-    emulate_config['player_save']['color'],
-    emulate_config['player_save']['size'],
+    speed=emulate_config['player_save']['speed'],
+    damage=emulate_config['player_save']['damage'],
+    atack_speed=emulate_config['player_save']['atack_speed'],
+    money_multi=emulate_config['player_save']['money_multi'],
+    coord=emulate_config['player_save']['coord'],
+    color=emulate_config['player_save']['color'],
+    size=emulate_config['player_save']['size'],
+    speed_down=emulate_config['player_save']['speed_down'],
+    speed_up=emulate_config['player_save']['speed_up'],
+    hp=emulate_config['player_save']['hp'],
 )
 bullet = Bullets(cd_bullet=emulate_config['player_save']['atack_speed']) # cd_bullet содержит в себе минимальное значение в секундах между выстрелами
 target = Target(
@@ -183,6 +204,16 @@ while True:
             mouse_lkm_down = True
         if event.type == pygame.MOUSEBUTTONUP:
             mouse_lkm_down = False
+
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_LSHIFT:
+            player.speed_status = 1
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+            player.speed_status = 2
+
+        if event.type == pygame.KEYUP and event.key == pygame.K_LSHIFT:
+            player.speed_status = 0
+        if event.type == pygame.KEYUP and event.key == pygame.K_SPACE:
+            player.speed_status = 0
 
     # Проверка событий №2
     keys = pygame.key.get_pressed()
