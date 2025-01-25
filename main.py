@@ -24,6 +24,7 @@ emulate_config = {
         'coord':[500,830],
         'color':[255,255,255],
         'size':50,
+        'money_multi':1,
     },
     'target_settings':{
         'speed':3.25,
