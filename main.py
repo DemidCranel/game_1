@@ -16,7 +16,7 @@ bullet_speed = 20
 font_text = pygame.font.SysFont('Comic Sans MS', 50)
 
 # Все возможные гейм статусы: menu - Главное меню, game - Игровой статус
-game_status = 'game'
+game_status = 'menu'
 
 emulate_config = {
     'player_save':{
@@ -258,13 +258,14 @@ class MainMenu():
         self.size_text = size_text
         self.font_text_button = pygame.font.SysFont('Comic Sans MS', size_text)
 
-    def new_button(self, text, coord):
-        self.button_list.append([coord[0], coord[1], self.widht, self.height, text])
-
     def button_render(self):
-        for button in self.button_list:
-            pygame.draw.rect(screen, (255, 255, 255), (button[0], button[1], button[2], button[3]))
-            screen.blit(self.font_text_button.render(button[4], False, (0, 0, 0)), (button[0] + self.widht / 2 - self.size_text, button[1] + self.height / 2 - self.size_text))
+        pygame.draw.rect(screen, (255, 255, 255), (screen_xy[0] // 2 - self.widht // 2, screen_xy[1] // 2 - self.height // 2, self.widht, self.height))
+
+        text_start = font_text.render("Start", True, (0, 0, 0))
+        text_start_rect = text_start.get_rect(center=(self.widht // 2, self.height // 2))
+        text_start_rect.x += screen_xy[0] // 2 - self.widht // 2
+        text_start_rect.y += screen_xy[1] // 2 - self.height // 2
+        screen.blit(text_start, text_start_rect)
 
 mainMenu = MainMenu(400, 150, size_text=50)
 
@@ -274,7 +275,6 @@ def start_cycle():
 
     if game_status == 'menu':
         pygame.draw.rect(screen, (0, 0, 0), (0, 0, screen_xy[0], screen_xy[1]))
-        mainMenu.new_button('Start', [screen_xy[0] / 2 - mainMenu.widht / 2, screen_xy[1] / 2 - mainMenu.height / 2])
         mainMenu.button_render()
 
     elif game_status == 'game':
@@ -354,6 +354,12 @@ while True:
             shift_up = True
         if event.type == pygame.KEYUP and event.key == pygame.K_SPACE:
             space_up = True
+
+        if event.type == pygame.MOUSEBUTTONDOWN:  # Better to seperate to a new if statement aswell, since there's more buttons that can be clicked and makes for cleaner code.
+            if event.button == 1:
+                if (event.pos[0] > screen_xy[0] // 2 - mainMenu.widht // 2 and event.pos[0] < screen_xy[0] // 2 + mainMenu.widht // 2):
+                    if (event.pos[1] > screen_xy[1] // 2 - mainMenu.height // 2 and event.pos[1] < screen_xy[1] // 2 + mainMenu.height // 2):
+                        game_status = 'game'
 
     # Проверка событий №2
     keys = pygame.key.get_pressed()
