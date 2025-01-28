@@ -1,4 +1,6 @@
 # Отрисовать декорации
+# Отцентрировать текст по кнопке
+# Сделать изменение game_status с menu на game при нажатии на кнопку старта
 
 import pygame
 import time
@@ -13,6 +15,9 @@ bullet_speed = 20
 
 font_text = pygame.font.SysFont('Comic Sans MS', 50)
 
+# Все возможные гейм статусы: menu - Главное меню, game - Игровой статус
+game_status = 'game'
+
 emulate_config = {
     'player_save':{
         'hp':5,
@@ -22,13 +27,13 @@ emulate_config = {
         'damage':1,
         'atack_speed':0.25,
         'coord':[screen_xy[0] / 2 - 25, screen_xy[1] - screen_xy[1] / 5], # Вычитаем 25 потому что это половина размера игрока
-        'color':[255,255,255],
+        'color':[60, 60, 60],
         'size':50,
         'money_multi':1,
         'max_coord_y':screen_xy[1] - screen_xy[1] / 3 - 25, # Вычитаем 25 потому что это половина размера игрока
     },
     'target_settings':{
-        'speed':3.25,
+        'speed':2.75,
         'cooldown':1,
     }
 }
@@ -135,7 +140,7 @@ class Player():
 
 
     def player_render(self):
-        pygame.draw.rect(screen, (255,255,255), (self.coord[0] - self.size/2, self.coord[1] - self.size/2, self.size, self.size)) # 25 вычитаем из-за того что это половина от размера игрока
+        pygame.draw.rect(screen, self.color, (self.coord[0] - self.size/2, self.coord[1] - self.size/2, self.size, self.size)) # 25 вычитаем из-за того что это половина от размера игрока
 
     def player_tick(self):
         if self.hp <= 0:
@@ -160,7 +165,7 @@ class Bullets():
     def new_bullet(self):
         if time.time() - self.time_last_bullet > self.cd_bullet:
             self.bullets_all.append(
-                {'coord':[player.coord[0], player.coord[1]],
+                {'coord':[player.coord[0] - self.width / 2, player.coord[1] - player.size / 2],
                  'damage':emulate_config['player_save']['damage']
                  })
             self.time_last_bullet = time.time()
@@ -242,30 +247,61 @@ class Target():
         for target in self.all_targets:
             pygame.draw.rect(screen, target['color'], (target['coord'][0], target['coord'][1], target['size'], target['size']))
 
+menu_button_count = 0
+
+class MainMenu():
+
+    def __init__(self, widht, height, size_text):
+        self.widht = widht
+        self.height = height
+        self.button_list = []
+        self.size_text = size_text
+        self.font_text_button = pygame.font.SysFont('Comic Sans MS', size_text)
+
+    def new_button(self, text, coord):
+        self.button_list.append([coord[0], coord[1], self.widht, self.height, text])
+
+    def button_render(self):
+        for button in self.button_list:
+            pygame.draw.rect(screen, (255, 255, 255), (button[0], button[1], button[2], button[3]))
+            screen.blit(self.font_text_button.render(button[4], False, (0, 0, 0)), (button[0] + self.widht / 2 - self.size_text, button[1] + self.height / 2 - self.size_text))
+
+mainMenu = MainMenu(400, 150, size_text=50)
+
 
 
 def start_cycle():
-    pygame.draw.rect(screen, (60, 60, 60), (0,0,screen_xy[0],screen_xy[1])) # Задний фон
 
-    player.move() # Выполняем функцию передвижения у игрока
+    if game_status == 'menu':
+        pygame.draw.rect(screen, (0, 0, 0), (0, 0, screen_xy[0], screen_xy[1]))
+        mainMenu.new_button('Start', [screen_xy[0] / 2 - mainMenu.widht / 2, screen_xy[1] / 2 - mainMenu.height / 2])
+        mainMenu.button_render()
 
-    bullet.bullet_render() # Отрисовываем пули
-    target.target_render() # Отрисовываем таргет
-    player.player_render() # Отрисовываем игрока
+    elif game_status == 'game':
+        pygame.draw.rect(screen, (60, 60, 60), (0,0,screen_xy[0],screen_xy[1])) # Задний фон
 
-    # Текст здоровья
-    text_hp = font_text.render(f'Здоровье: {player.hp}', False, (255, 255, 255))
-    screen.blit(text_hp, (50, 50))
-    # Текст счета
-    text_score = font_text.render(f'Счет: {player.score}', False, (255, 255, 255))
-    screen.blit(text_score, (50, 110))
+        player.move() # Выполняем функцию передвижения у игрока
 
-    pygame.draw.rect(screen, (0, 0, 0), (0, screen_xy[1] - screen_xy[1] / 3, screen_xy[0], 3))
+        pygame.draw.rect(screen, (255, 255, 255), (0, screen_xy[1] - screen_xy[1] / 3, screen_xy[0], screen_xy[1] / 3))
 
-    target.target_tick()
-    bullet.tick()
-    player.player_tick()
-    clock.tick(160) # Ограничение фпс
+        bullet.bullet_render() # Отрисовываем пули
+        target.target_render() # Отрисовываем таргет
+        player.player_render() # Отрисовываем игрока
+
+
+        # Текст здоровья
+        text_hp = font_text.render(f'Здоровье: {player.hp}', False, (255, 255, 255))
+        screen.blit(text_hp, (50, 50))
+        # Текст счета
+        text_score = font_text.render(f'Счет: {player.score}', False, (255, 255, 255))
+        screen.blit(text_score, (50, 110))
+
+
+        target.target_tick()
+        bullet.tick()
+        player.player_tick()
+        clock.tick(160) # Ограничение фпс
+
 
 
 # Тут создаются объекты класса и так же происходит их настройка
@@ -296,8 +332,11 @@ while True:
 
     # Проверка событий №1
     for event in pygame.event.get():
-        if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+        if event.type == pygame.QUIT:
             pygame.quit()
+
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE and game_status == 'game':
+            game_status = 'menu'
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             mouse_lkm_down = True
