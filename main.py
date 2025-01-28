@@ -21,10 +21,11 @@ emulate_config = {
         'speed_up':15,
         'damage':1,
         'atack_speed':0.25,
-        'coord':[500,830],
+        'coord':[screen_xy[0] / 2 - 25, screen_xy[1] - screen_xy[1] / 5], # Вычитаем 25 потому что это половина размера игрока
         'color':[255,255,255],
         'size':50,
         'money_multi':1,
+        'max_coord_y':screen_xy[1] - screen_xy[1] / 3 - 25, # Вычитаем 25 потому что это половина размера игрока
     },
     'target_settings':{
         'speed':3.25,
@@ -34,20 +35,22 @@ emulate_config = {
 
 
 class Player():
-    def __init__(self, speed, damage, atack_speed, money_multi, coord, color, size, speed_down, speed_up, hp):
+    def __init__(self, speed, damage, atack_speed, money_multi, coord, color, size, speed_down, speed_up, hp, max_coord_y):
         self.speed = speed
         self.damage = damage
         self.atack_speed = atack_speed
         self.money_multi = money_multi
         self.coord = coord
         self.color = color
-        self.line = None
+        self.line_x = None
+        self.line_y = None
         self.size = size
         self.speed_down = speed_down
         self.speed_up = speed_up
         self.speed_status = 0 # 0 - обычная скорость, 1 - быстрая скорость, 2 - медленная скорость
         self.hp = hp
         self.score = 0
+        self.max_coord_y = max_coord_y
 
 
     def move(self):
@@ -58,27 +61,77 @@ class Player():
         elif self.speed_status != 0 and space_up and shift_up:
             self.speed_status = 0
 
-        if self.line == "Right":
+        if self.line_x == "Right" and self.line_y == None:
             if self.speed_status == 0:
                 self.coord[0] += self.speed
             elif self.speed_status == 1:
                 self.coord[0] += self.speed_up
             elif self.speed_status == 2:
                 self.coord[0] += self.speed_down
+        elif self.line_x == 'Right':
+            if self.speed_status == 0:
+                self.coord[0] += self.speed * 0.7
+            elif self.speed_status == 1:
+                self.coord[0] += self.speed_up * 0.7
+            elif self.speed_status == 2:
+                self.coord[0] += self.speed_down * 0.7
 
-        if self.line == "Left":
+        if self.line_x == "Left" and self.line_x == None:
             if self.speed_status == 0:
                 self.coord[0] -= self.speed
             elif self.speed_status == 1:
                 self.coord[0] -= self.speed_up
             elif self.speed_status == 2:
                 self.coord[0] -= self.speed_down
+        elif self.line_x == 'Left':
+            if self.speed_status == 0:
+                self.coord[0] -= self.speed * 0.7
+            elif self.speed_status == 1:
+                self.coord[0] -= self.speed_up * 0.7
+            elif self.speed_status == 2:
+                self.coord[0] -= self.speed_down * 0.7
+
+        if self.line_y == "Up" and self.line_x == None:
+            if self.speed_status == 0:
+                self.coord[1] -= self.speed
+            elif self.speed_status == 1:
+                self.coord[1] -= self.speed_up
+            elif self.speed_status == 2:
+                self.coord[1] -= self.speed_down
+        elif self.line_y == 'Up':
+            if self.speed_status == 0:
+                self.coord[1] -= self.speed * 0.7
+            elif self.speed_status == 1:
+                self.coord[1] -= self.speed_up * 0.7
+            elif self.speed_status == 2:
+                self.coord[1] -= self.speed_down * 0.7
+
+        if self.line_y == "Down" and self.line_x == None:
+            if self.speed_status == 0:
+                self.coord[1] += self.speed
+            elif self.speed_status == 1:
+                self.coord[1] += self.speed_up
+            elif self.speed_status == 2:
+                self.coord[1] += self.speed_down
+        elif self.line_y == "Down":
+            if self.speed_status == 0:
+                self.coord[1] += self.speed * 0.7
+            elif self.speed_status == 1:
+                self.coord[1] += self.speed_up * 0.7
+            elif self.speed_status == 2:
+                self.coord[1] += self.speed_down * 0.7
 
         if self.coord[0] + self.size / 2 > screen_xy[0]:
             self.coord[0] = screen_xy[0] - self.size / 2
 
         if self.coord[0] - self.size / 2 < 0:
             self.coord[0] = 0 + self.size / 2
+
+        if self.coord[1] - self.size <= self.max_coord_y:
+            self.coord[1] = self.max_coord_y + self.size
+
+        if self.coord[1] >= screen_xy[1] - self.size / 2:
+            self.coord[1] = screen_xy[1] - self.size / 2
 
 
     def player_render(self):
@@ -207,6 +260,8 @@ def start_cycle():
     text_score = font_text.render(f'Счет: {player.score}', False, (255, 255, 255))
     screen.blit(text_score, (50, 110))
 
+    pygame.draw.rect(screen, (0, 0, 0), (0, screen_xy[1] - screen_xy[1] / 3, screen_xy[0], 3))
+
     target.target_tick()
     bullet.tick()
     player.player_tick()
@@ -225,6 +280,7 @@ player = Player( # Характеристики игрока
     speed_down=emulate_config['player_save']['speed_down'],
     speed_up=emulate_config['player_save']['speed_up'],
     hp=emulate_config['player_save']['hp'],
+    max_coord_y=emulate_config['player_save']['max_coord_y'],
 )
 bullet = Bullets(cd_bullet=emulate_config['player_save']['atack_speed']) # cd_bullet содержит в себе минимальное значение в секундах между выстрелами
 target = Target(
@@ -263,15 +319,22 @@ while True:
     # Проверка событий №2
     keys = pygame.key.get_pressed()
     if keys[pygame.K_d]:
-        player.line = "Right"
+        player.line_x = "Right"
     elif keys[pygame.K_a]:
-        player.line = "Left"
+        player.line_x = "Left"
     else:
-        player.line = None
+        player.line_x = None
     if keys[pygame.K_d] and keys[pygame.K_a]:
-        player.line = None
+        player.line_x = None
 
-
+    if keys[pygame.K_w]:
+        player.line_y = "Up"
+    elif keys[pygame.K_s]:
+        player.line_y = "Down"
+    else:
+        player.line_y = None
+    if keys[pygame.K_w] and keys[pygame.K_s]:
+        player.line_y = None
 
     if mouse_lkm_down:
         bullet.new_bullet()
