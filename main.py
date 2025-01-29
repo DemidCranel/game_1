@@ -1,10 +1,10 @@
-# Отрисовать декорации
-# Отцентрировать текст по кнопке
-# Сделать изменение game_status с menu на game при нажатии на кнопку старта
+# Сделать улучшение атак спида, урона и хп за игровые поинты, сделать сохранение в кфг
+# Доделать кнопки покупок улучшений в меню
 
 import pygame
 import time
 import random
+import configparser
 
 pygame.init()
 
@@ -18,18 +18,31 @@ font_text = pygame.font.SysFont('Comic Sans MS', 50)
 # Все возможные гейм статусы: menu - Главное меню, game - Игровой статус
 game_status = 'menu'
 
+config = configparser.ConfigParser()
+
+def save_config():
+    # Сохранение изминения в конфиг файле
+    with open('config.ini', 'w') as config_file:
+        config.write(config_file)
+
+def read_config():
+    # Чтение файла конфигурации
+    config.read('config.ini')
+
+read_config() # Читаем конфиг чтобы работать с ним
+
 emulate_config = {
     'player_save':{
-        'hp':5,
-        'speed':9,
-        'speed_down':3,
-        'speed_up':15,
-        'damage':1,
-        'atack_speed':0.25,
+        'hp':float(config.get('Stats', 'hp')),
+        'speed':float(config.get('Stats', 'speed')),
+        'speed_down':float(config.get('Stats', 'speed_down')),
+        'speed_up':float(config.get('Stats', 'speed_up')),
+        'damage':float(config.get('Stats', 'damage')),
+        'atack_speed':float(config.get('Stats', 'atack_speed')),
         'coord':[screen_xy[0] / 2 - 25, screen_xy[1] - screen_xy[1] / 5], # Вычитаем 25 потому что это половина размера игрока
         'color':[60, 60, 60],
         'size':50,
-        'money_multi':1,
+        'point_multi':int(config.get('Stats', 'point_multi')),
         'max_coord_y':screen_xy[1] - screen_xy[1] / 3 - 25, # Вычитаем 25 потому что это половина размера игрока
     },
     'target_settings':{
@@ -40,11 +53,11 @@ emulate_config = {
 
 
 class Player():
-    def __init__(self, speed, damage, atack_speed, money_multi, coord, color, size, speed_down, speed_up, hp, max_coord_y):
+    def __init__(self, speed, damage, atack_speed, point_multi, coord, color, size, speed_down, speed_up, hp, max_coord_y, all_points):
         self.speed = speed
         self.damage = damage
         self.atack_speed = atack_speed
-        self.money_multi = money_multi
+        self.point_multi = point_multi
         self.coord = coord
         self.color = color
         self.line_x = None
@@ -56,6 +69,7 @@ class Player():
         self.hp = hp
         self.score = 0
         self.max_coord_y = max_coord_y
+        self.all_points = int(all_points)
 
 
     def move(self):
@@ -182,7 +196,8 @@ class Bullets():
                 for index_target in range(len(target.all_targets)):
                     if self.bullets_all[index_bullet]['coord'][0] > target.all_targets[index_target]['coord'][0] and self.bullets_all[index_bullet]['coord'][0] < target.all_targets[index_target]['coord'][0] + target.all_targets[index_target]['size']:
                         if self.bullets_all[index_bullet]['coord'][1] > target.all_targets[index_target]['coord'][1] and self.bullets_all[index_bullet]['coord'][1] < target.all_targets[index_target]['coord'][1] + target.all_targets[index_target]['size']:
-                            player.score += 5
+                            player.score += 5 * emulate_config['player_save']['point_multi']
+                            player.all_points += 5 * emulate_config['player_save']['point_multi']
                             self.delete_bullets.append(index_bullet)
                             if target.all_targets[index_target]['hp'] - player.damage <= 0:
                                 self.delete_targets.append(index_target)
@@ -258,26 +273,71 @@ class MainMenu():
         self.size_text = size_text
         self.font_text_button = pygame.font.SysFont('Comic Sans MS', size_text)
 
+    def new_mini_button(self, coord, text='test'):
+        pygame.draw.rect(screen, (255, 255, 255), (coord[0], coord[1], 50, 50))
+
     def button_render(self):
         pygame.draw.rect(screen, (255, 255, 255), (screen_xy[0] // 2 - self.widht // 2, screen_xy[1] // 2 - self.height // 2, self.widht, self.height))
 
-        text_start = font_text.render("Start", True, (0, 0, 0))
+        text_start = font_text.render("Старт", True, (0, 0, 0))
         text_start_rect = text_start.get_rect(center=(self.widht // 2, self.height // 2))
         text_start_rect.x += screen_xy[0] // 2 - self.widht // 2
         text_start_rect.y += screen_xy[1] // 2 - self.height // 2
         screen.blit(text_start, text_start_rect)
 
+        self.new_mini_button([100,100])
+
+
+
+
+
 mainMenu = MainMenu(400, 150, size_text=50)
+menu_status_last = False
 
+# Тут создаются объекты класса и так же происходит их настройка
+player = Player( # Характеристики игрока
+    speed=emulate_config['player_save']['speed'],
+    damage=emulate_config['player_save']['damage'],
+    atack_speed=emulate_config['player_save']['atack_speed'],
+    point_multi=emulate_config['player_save']['point_multi'],
+    coord=emulate_config['player_save']['coord'],
+    color=emulate_config['player_save']['color'],
+    size=emulate_config['player_save']['size'],
+    speed_down=emulate_config['player_save']['speed_down'],
+    speed_up=emulate_config['player_save']['speed_up'],
+    hp=emulate_config['player_save']['hp'],
+    max_coord_y=emulate_config['player_save']['max_coord_y'],
+    all_points=config.get('Stats', 'all_points')
+)
+bullet = Bullets(cd_bullet=emulate_config['player_save']['atack_speed']) # cd_bullet содержит в себе минимальное значение в секундах между выстрелами
+target = Target(
+    speed=emulate_config['target_settings']['speed'],
+    cooldown=emulate_config['target_settings']['cooldown'],
+)
 
+mouse_lkm_down = False
+shift_up = True
+space_up = True
+
+time_cycle_last = 0
 
 def start_cycle():
-
+    global menu_status_last
     if game_status == 'menu':
         pygame.draw.rect(screen, (0, 0, 0), (0, 0, screen_xy[0], screen_xy[1]))
         mainMenu.button_render()
+        menu_status_last = True
 
     elif game_status == 'game':
+        if menu_status_last:
+            menu_status_last = False
+            player.coord = emulate_config['player_save']['coord']
+            bullet.bullets_all = []
+            target.all_targets = []
+            target.last_time = 0
+            player.score = 0
+            player.hp = emulate_config['player_save']['hp']
+
         pygame.draw.rect(screen, (60, 60, 60), (0,0,screen_xy[0],screen_xy[1])) # Задний фон
 
         player.move() # Выполняем функцию передвижения у игрока
@@ -290,11 +350,17 @@ def start_cycle():
 
 
         # Текст здоровья
-        text_hp = font_text.render(f'Здоровье: {player.hp}', False, (255, 255, 255))
+        text_hp = font_text.render(f'Здоровье: {int(player.hp)}', False, (255, 255, 255))
         screen.blit(text_hp, (50, 50))
-        # Текст счета
-        text_score = font_text.render(f'Счет: {player.score}', False, (255, 255, 255))
+        # Текст полученного счета
+        text_score = font_text.render(f'Полученный счет: {player.score}', False, (255, 255, 255))
         screen.blit(text_score, (50, 110))
+        # Текст всего счета
+        text_score = font_text.render(f'Счет: {player.all_points}', False, (255, 255, 255))
+        screen.blit(text_score, (50, 170))
+        # Текст урона
+        text_score = font_text.render(f'Урон: {int(player.damage)}', False, (255, 255, 255))
+        screen.blit(text_score, (50, 230))
 
 
         target.target_tick()
@@ -303,30 +369,14 @@ def start_cycle():
         clock.tick(160) # Ограничение фпс
 
 
+    global time_cycle_last
+    if time.time() - time_cycle_last >= 5:
+        time_cycle_last = time.time()
+        config.set('Stats', 'all_points', str(player.all_points))
+        save_config()
+        read_config()
 
-# Тут создаются объекты класса и так же происходит их настройка
-player = Player( # Характеристики игрока
-    speed=emulate_config['player_save']['speed'],
-    damage=emulate_config['player_save']['damage'],
-    atack_speed=emulate_config['player_save']['atack_speed'],
-    money_multi=emulate_config['player_save']['money_multi'],
-    coord=emulate_config['player_save']['coord'],
-    color=emulate_config['player_save']['color'],
-    size=emulate_config['player_save']['size'],
-    speed_down=emulate_config['player_save']['speed_down'],
-    speed_up=emulate_config['player_save']['speed_up'],
-    hp=emulate_config['player_save']['hp'],
-    max_coord_y=emulate_config['player_save']['max_coord_y'],
-)
-bullet = Bullets(cd_bullet=emulate_config['player_save']['atack_speed']) # cd_bullet содержит в себе минимальное значение в секундах между выстрелами
-target = Target(
-    speed=emulate_config['target_settings']['speed'],
-    cooldown=emulate_config['target_settings']['cooldown'],
-)
 
-mouse_lkm_down = False
-shift_up = True
-space_up = True
 
 while True:
 
