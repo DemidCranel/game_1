@@ -1,6 +1,3 @@
-# Сделать улучшение атак спида, урона и хп за игровые поинты, сделать сохранение в кфг
-# Доделать кнопки покупок улучшений в меню
-
 import pygame
 import time
 import random
@@ -42,18 +39,28 @@ emulate_config = {
         'coord':[screen_xy[0] / 2 - 25, screen_xy[1] - screen_xy[1] / 5], # Вычитаем 25 потому что это половина размера игрока
         'color':[60, 60, 60],
         'size':50,
-        'point_multi':int(config.get('Stats', 'point_multi')),
+        'point_multi':float(config.get('Stats', 'point_multi')),
         'max_coord_y':screen_xy[1] - screen_xy[1] / 3 - 25, # Вычитаем 25 потому что это половина размера игрока
+        'lvl_upgrade_damage':float(config.get('Stats', 'lvl_upgrade_damage')),
+        'lvl_upgrade_hp':float(config.get('Stats', 'lvl_upgrade_hp')),
+        'lvl_upgrade_atack_speed':float(config.get('Stats', 'lvl_upgrade_atack_speed')),
+        'max_hp':float(config.get('Stats', 'max_hp')),
     },
     'target_settings':{
-        'speed':2.75,
-        'cooldown':1,
+        'speed':float(config.get('Target', "speed")),
+        'cooldown':float(config.get('Target', 'cooldown')),
     }
 }
 
 
 class Player():
-    def __init__(self, speed, damage, atack_speed, point_multi, coord, color, size, speed_down, speed_up, hp, max_coord_y, all_points):
+    def __init__(
+            self, speed, damage, atack_speed,
+            point_multi, coord, color, size,
+            speed_down, speed_up, hp, max_coord_y,
+            all_points, lvl_upgrade_damage, lvl_upgrade_hp, lvl_upgrade_atack_speed,
+            max_hp):
+
         self.speed = speed
         self.damage = damage
         self.atack_speed = atack_speed
@@ -67,9 +74,14 @@ class Player():
         self.speed_up = speed_up
         self.speed_status = 0 # 0 - обычная скорость, 1 - быстрая скорость, 2 - медленная скорость
         self.hp = hp
+        self.max_hp = max_hp
         self.score = 0
         self.max_coord_y = max_coord_y
-        self.all_points = int(all_points)
+        self.all_points = all_points
+        self.lvl_upgrade_damage = lvl_upgrade_damage
+        self.lvl_upgrade_hp = lvl_upgrade_hp
+        self.lvl_upgrade_atack_speed = lvl_upgrade_atack_speed
+
 
 
     def move(self):
@@ -158,7 +170,8 @@ class Player():
 
     def player_tick(self):
         if self.hp <= 0:
-            self.hp = emulate_config['player_save']['hp']
+            self.hp = self.max_hp
+            config.set('Stats', 'hp', str(self.max_hp))
             self.score = 0
 
 
@@ -177,6 +190,7 @@ class Bullets():
         self.speed = 10
 
     def new_bullet(self):
+        self.cd_bullet = player.atack_speed
         if time.time() - self.time_last_bullet > self.cd_bullet:
             self.bullets_all.append(
                 {'coord':[player.coord[0] - self.width / 2, player.coord[1] - player.size / 2],
@@ -196,8 +210,12 @@ class Bullets():
                 for index_target in range(len(target.all_targets)):
                     if self.bullets_all[index_bullet]['coord'][0] > target.all_targets[index_target]['coord'][0] and self.bullets_all[index_bullet]['coord'][0] < target.all_targets[index_target]['coord'][0] + target.all_targets[index_target]['size']:
                         if self.bullets_all[index_bullet]['coord'][1] > target.all_targets[index_target]['coord'][1] and self.bullets_all[index_bullet]['coord'][1] < target.all_targets[index_target]['coord'][1] + target.all_targets[index_target]['size']:
-                            player.score += 5 * emulate_config['player_save']['point_multi']
-                            player.all_points += 5 * emulate_config['player_save']['point_multi']
+                            if player.damage == 2 and target.all_targets[index_target]['size'] < 125:
+                                player.score += 10 * emulate_config['player_save']['point_multi']
+                                player.all_points += 10 * emulate_config['player_save']['point_multi']
+                            else:
+                                player.score += 5 * emulate_config['player_save']['point_multi']
+                                player.all_points += 5 * emulate_config['player_save']['point_multi']
                             self.delete_bullets.append(index_bullet)
                             if target.all_targets[index_target]['hp'] - player.damage <= 0:
                                 self.delete_targets.append(index_target)
@@ -272,11 +290,54 @@ class MainMenu():
         self.button_list = []
         self.size_text = size_text
         self.font_text_button = pygame.font.SysFont('Comic Sans MS', size_text)
+        self.cost_upgrade_damage = 100
+        self.max_upgrade_damage = 1
+        self.cost_upgrade_hp = 50
+        self.max_upgrade_hp = 5
+        self.cost_atack_speed = 75
+        self.max_atack_speed = 4
 
-    def new_mini_button(self, coord, text='test'):
-        pygame.draw.rect(screen, (255, 255, 255), (coord[0], coord[1], 50, 50))
+    def new_mini_button(self, coord, text='test'): # Размер кнопок всегда 50
+        font_text = pygame.font.SysFont('Comic Sans MS', 25)
+        pygame.draw.rect(screen, (255, 255, 255), (coord[0], coord[1], 50, 50)) # Рисуем плюсики
+        pygame.draw.rect(screen, (0, 0, 0), (coord[0] + 10, coord[1] + 20, 30, 10)) # Рисуем плюсики
+        pygame.draw.rect(screen, (0, 0, 0), (coord[0] + 20, coord[1] + 10, 10, 30)) # Рисуем плюсики
+        screen.blit(font_text.render(text, True, (255, 255, 255)), (coord[0] + 75, coord[1] + 2.5))
 
-    def button_render(self):
+    def event_buy(self, type_event):
+        if type_event == 'damage' and player.all_points >= self.cost_upgrade_damage and player.lvl_upgrade_damage < self.max_upgrade_damage:
+            config.set('Stats', 'all_points', f'{player.all_points - self.cost_upgrade_damage}')
+            config.set('Stats', 'lvl_upgrade_damage', f'{player.lvl_upgrade_damage + 1}')
+            config.set('Stats', 'damage', f'{player.damage + 1}')
+            player.all_points -= self.cost_upgrade_damage
+            player.lvl_upgrade_damage += 1
+            player.damage += 1
+            save_config()
+            read_config()
+
+        elif type_event == 'hp' and player.all_points >= self.cost_upgrade_hp and player.lvl_upgrade_hp < self.max_upgrade_hp:
+            config.set('Stats', 'all_points', f'{player.all_points - self.cost_upgrade_hp}')
+            config.set('Stats', 'lvl_upgrade_hp', f'{player.lvl_upgrade_hp + 1}')
+            config.set('Stats', 'max_hp', f'{player.hp + 1}')
+            player.all_points -= self.cost_upgrade_hp
+            player.lvl_upgrade_hp += 1
+            player.max_hp += 1
+            player.hp = player.max_hp
+            save_config()
+            read_config()
+
+        elif type_event == 'atack_speed' and player.all_points >= self.cost_atack_speed and player.lvl_upgrade_atack_speed < self.max_atack_speed:
+            config.set('Stats', 'all_points', f'{player.all_points - self.cost_atack_speed}')
+            config.set('Stats', 'lvl_upgrade_atack_speed', f'{player.lvl_upgrade_atack_speed + 1}')
+            config.set('Stats', 'atack_speed', f'{player.atack_speed - 0.1}')
+            emulate_config['player_save']['atack_speed'] = player.atack_speed - 0.1
+            player.all_points -= self.cost_atack_speed
+            player.lvl_upgrade_atack_speed += 1
+            player.atack_speed -= 0.1
+            save_config()
+            read_config()
+
+    def menu_render(self):
         pygame.draw.rect(screen, (255, 255, 255), (screen_xy[0] // 2 - self.widht // 2, screen_xy[1] // 2 - self.height // 2, self.widht, self.height))
 
         text_start = font_text.render("Старт", True, (0, 0, 0))
@@ -285,8 +346,27 @@ class MainMenu():
         text_start_rect.y += screen_xy[1] // 2 - self.height // 2
         screen.blit(text_start, text_start_rect)
 
-        self.new_mini_button([100,100])
+        # Информация о балансе на экране
+        font_text_1 = pygame.font.SysFont('Comic Sans MS', 25)
+        screen.blit(font_text_1.render(f'Баланс {int(player.all_points)} поинтов', True, (255, 255, 255)), (100, 100 + 2.5))
 
+        self.new_mini_button([100, screen_xy[1] - 400],
+                             f'Улучшить урон за {int(self.cost_upgrade_damage)} поинтов | {int(player.lvl_upgrade_damage)} lvl' if player.lvl_upgrade_damage < self.max_upgrade_damage
+                             else f'Максимальное улучшение! | {int(player.lvl_upgrade_damage)} lvl')
+        if click and pygame.Rect(100, screen_xy[1] - 400, 50, 50).collidepoint(pygame.mouse.get_pos()):
+            self.event_buy('damage')
+
+        self.new_mini_button([100, screen_xy[1] - 300], f'Улучшить хп за {int(self.cost_upgrade_hp)} поинтов | {int(player.lvl_upgrade_hp)} lvl'
+                            if player.lvl_upgrade_hp < self.max_upgrade_hp else f'Максимальное улучшение! | {int(player.lvl_upgrade_hp)} lvl')
+        if click and pygame.Rect(100, screen_xy[1] - 300, 50, 50).collidepoint(pygame.mouse.get_pos()):
+            self.event_buy('hp')
+
+        self.new_mini_button([100, screen_xy[1] - 200],
+                             f'Улучшить скорость атаки за {int(self.cost_atack_speed)} поинтов | {int(player.lvl_upgrade_atack_speed)} lvl'
+                             if player.lvl_upgrade_atack_speed < self.max_atack_speed else f'Максимальное улучшение! | {int(player.lvl_upgrade_atack_speed)} lvl'
+                             )
+        if click and pygame.Rect(100, screen_xy[1] - 200, 50, 50).collidepoint(pygame.mouse.get_pos()):
+            self.event_buy('atack_speed')
 
 
 
@@ -307,7 +387,11 @@ player = Player( # Характеристики игрока
     speed_up=emulate_config['player_save']['speed_up'],
     hp=emulate_config['player_save']['hp'],
     max_coord_y=emulate_config['player_save']['max_coord_y'],
-    all_points=config.get('Stats', 'all_points')
+    all_points=float(config.get('Stats', 'all_points')),
+    lvl_upgrade_damage=emulate_config['player_save']['lvl_upgrade_damage'],
+    lvl_upgrade_hp=emulate_config['player_save']['lvl_upgrade_hp'],
+    lvl_upgrade_atack_speed=emulate_config['player_save']['lvl_upgrade_atack_speed'],
+    max_hp=emulate_config['player_save']['max_hp'],
 )
 bullet = Bullets(cd_bullet=emulate_config['player_save']['atack_speed']) # cd_bullet содержит в себе минимальное значение в секундах между выстрелами
 target = Target(
@@ -325,7 +409,7 @@ def start_cycle():
     global menu_status_last
     if game_status == 'menu':
         pygame.draw.rect(screen, (0, 0, 0), (0, 0, screen_xy[0], screen_xy[1]))
-        mainMenu.button_render()
+        mainMenu.menu_render()
         menu_status_last = True
 
     elif game_status == 'game':
@@ -350,13 +434,13 @@ def start_cycle():
 
 
         # Текст здоровья
-        text_hp = font_text.render(f'Здоровье: {int(player.hp)}', False, (255, 255, 255))
+        text_hp = font_text.render(f'Здоровье: {int(player.hp)} / {int(player.max_hp)}', False, (255, 255, 255))
         screen.blit(text_hp, (50, 50))
         # Текст полученного счета
-        text_score = font_text.render(f'Полученный счет: {player.score}', False, (255, 255, 255))
+        text_score = font_text.render(f'Полученный счет: {int(player.score)}', False, (255, 255, 255))
         screen.blit(text_score, (50, 110))
         # Текст всего счета
-        text_score = font_text.render(f'Счет: {player.all_points}', False, (255, 255, 255))
+        text_score = font_text.render(f'Счет: {int(player.all_points)}', False, (255, 255, 255))
         screen.blit(text_score, (50, 170))
         # Текст урона
         text_score = font_text.render(f'Урон: {int(player.damage)}', False, (255, 255, 255))
@@ -379,18 +463,25 @@ def start_cycle():
 
 
 while True:
-
+    click = False
     # Проверка событий №1
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
 
+        if event.type == pygame.MOUSEBUTTONDOWN:  # Better to seperate to a new if statement aswell, since there's more buttons that can be clicked and makes for cleaner code.
+            if event.button == 1:
+                click = True
+                if (event.pos[0] > screen_xy[0] // 2 - mainMenu.widht // 2 and event.pos[0] < screen_xy[0] // 2 + mainMenu.widht // 2):
+                    if (event.pos[1] > screen_xy[1] // 2 - mainMenu.height // 2 and event.pos[1] < screen_xy[1] // 2 + mainMenu.height // 2):
+                        game_status = 'game'
+
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE and game_status == 'game':
             game_status = 'menu'
 
-        if event.type == pygame.MOUSEBUTTONDOWN:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mouse_lkm_down = True
-        if event.type == pygame.MOUSEBUTTONUP:
+        if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             mouse_lkm_down = False
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_LSHIFT:
@@ -405,11 +496,6 @@ while True:
         if event.type == pygame.KEYUP and event.key == pygame.K_SPACE:
             space_up = True
 
-        if event.type == pygame.MOUSEBUTTONDOWN:  # Better to seperate to a new if statement aswell, since there's more buttons that can be clicked and makes for cleaner code.
-            if event.button == 1:
-                if (event.pos[0] > screen_xy[0] // 2 - mainMenu.widht // 2 and event.pos[0] < screen_xy[0] // 2 + mainMenu.widht // 2):
-                    if (event.pos[1] > screen_xy[1] // 2 - mainMenu.height // 2 and event.pos[1] < screen_xy[1] // 2 + mainMenu.height // 2):
-                        game_status = 'game'
 
     # Проверка событий №2
     keys = pygame.key.get_pressed()
