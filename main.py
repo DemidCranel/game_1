@@ -428,7 +428,6 @@ class MainMenu():
                 color = (5 - self.cursor_rect[index][1]) * 20 * (255 / 100)
             else:
                 color = 255
-            print(color)
             pygame.draw.circle(screen, (0, 255, color), (self.cursor_rect[index][0][0], self.cursor_rect[index][0][1]), self.cursor_rect[index][1])
 
     def menu_render(self):
