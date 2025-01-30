@@ -39,7 +39,7 @@ emulate_config = {
         'damage':float(config.get('Stats', 'damage')),
         'atack_speed':float(config.get('Stats', 'atack_speed')),
         'coord':[screen_xy[0] / 2 - 25, screen_xy[1] - screen_xy[1] / 5], # Вычитаем 25 потому что это половина размера игрока
-        'color':[60, 60, 60],
+        'color':[255, 48, 48],
         'size':50,
         'point_multi':float(config.get('Stats', 'point_multi')),
         'max_coord_y':screen_xy[1] - screen_xy[1] / 3 - 25, # Вычитаем 25 потому что это половина размера игрока
@@ -174,6 +174,7 @@ class Player():
 
     def player_render(self):
         pygame.draw.rect(screen, self.color, (self.coord[0] - self.size/2, self.coord[1] - self.size/2, self.size, self.size)) # 25 вычитаем из-за того что это половина от размера игрока
+        pygame.draw.rect(screen, (38, 38, 38), (self.coord[0] - self.size/2, self.coord[1] - self.size/2, self.size, self.size), width=5) # 25 вычитаем из-за того что это половина от размера игрока
 
     def player_tick(self):
         if time.time() - self.last_multi_time >= 5:
@@ -291,7 +292,7 @@ class Target():
         self.last_time = 0
 
     def new_target(self):
-        if time.time() - self.last_time > self.cooldown:
+        if time.time() - self.last_time > self.cooldown / player.point_multi:
             if random.randint(1,2) == 1:
                 size_target = random.randint(75,110)
             else:
@@ -321,6 +322,11 @@ class Target():
     def target_render(self):
         for target in self.all_targets:
             pygame.draw.rect(screen, target['color'], (target['coord'][0], target['coord'][1], target['size'], target['size']))
+            if target['color'] == (247, 143, 57) or target['color'] == (0, 255, 9):
+                pygame.draw.rect(screen, ((189, 106, 38) if target['size'] > 125 else (0, 161, 5)), (target['coord'][0], target['coord'][1], target['size'], target['size']),
+                                 width=5 if target['size'] < 125 else 10)
+            elif target['color'] == (204, 255, 0):
+                pygame.draw.rect(screen, (133, 166, 0), (target['coord'][0], target['coord'][1], target['size'], target['size']), width=5)
 
 menu_button_count = 0
 
@@ -519,7 +525,9 @@ def start_cycle():
             menu_status_last = False
             player.coord = emulate_config['player_save']['coord']
             bullet.bullets_all = []
+            bullet.delete_bullets = []
             target.all_targets = []
+            target.delete_targets = []
             target.last_time = 0
             player.score = 0
             player.hp = emulate_config['player_save']['hp']
