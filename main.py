@@ -28,6 +28,8 @@ def read_config():
 
 read_config() # Читаем конфиг чтобы работать с ним
 
+pygame.mouse.set_visible(False) # Скрываем дефолтную мышь от винды
+
 emulate_config = {
     'player_save':{
         'hp':float(config.get('Stats', 'hp')),
@@ -405,6 +407,7 @@ class MainMenu():
             read_config()
 
     def cursor_visual(self):
+        color = 255
         self.cursor_rect.append([pygame.mouse.get_pos(), 5])
 
         if time.time() - self.time_last_1 > 0.1:
@@ -415,7 +418,12 @@ class MainMenu():
             self.cursor_rect[index][1] -= 0.1
             if self.cursor_rect[index][1] <= 0:
                 self.delete_cursor_rect.append(index)
-            pygame.draw.circle(screen, (255, 255, 255), (self.cursor_rect[index][0][0], self.cursor_rect[index][0][1]), self.cursor_rect[index][1])
+            if (5 - self.cursor_rect[index][1]) * 20 * (255 / 100) <= 255:
+                color = (5 - self.cursor_rect[index][1]) * 20 * (255 / 100)
+            else:
+                color = 255
+            print(color)
+            pygame.draw.circle(screen, (0, 255, color), (self.cursor_rect[index][0][0], self.cursor_rect[index][0][1]), self.cursor_rect[index][1])
 
     def menu_render(self):
         pygame.draw.rect(screen, (255, 255, 255), (screen_xy[0] // 2 - self.widht // 2, screen_xy[1] // 2 - self.height // 2, self.widht, self.height))
