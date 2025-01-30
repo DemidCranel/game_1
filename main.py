@@ -340,6 +340,9 @@ class MainMenu():
         self.max_upgrade_speed_target = 2
         self.cost_upgrade_count_bullet = 100
         self.max_upgrade_count_bullet = 2
+        self.cursor_rect = []
+        self.time_last_1 = time.time()
+        self.delete_cursor_rect = []
 
     def new_mini_button(self, coord, text='test'): # Размер кнопок всегда 50
         font_text = pygame.font.SysFont('Comic Sans MS', 25)
@@ -401,6 +404,19 @@ class MainMenu():
             save_config()
             read_config()
 
+    def cursor_visual(self):
+        self.cursor_rect.append([pygame.mouse.get_pos(), 5])
+
+        if time.time() - self.time_last_1 > 0.1:
+            self.time_last_1 = time.time()
+            for index in range(len(self.cursor_rect)):
+                self.cursor_rect[index][1] -= 0.1
+        for index in range(len(self.cursor_rect)):
+            self.cursor_rect[index][1] -= 0.1
+            if self.cursor_rect[index][1] <= 0:
+                self.delete_cursor_rect.append(index)
+            pygame.draw.circle(screen, (255, 255, 255), (self.cursor_rect[index][0][0], self.cursor_rect[index][0][1]), self.cursor_rect[index][1])
+
     def menu_render(self):
         pygame.draw.rect(screen, (255, 255, 255), (screen_xy[0] // 2 - self.widht // 2, screen_xy[1] // 2 - self.height // 2, self.widht, self.height))
 
@@ -442,6 +458,8 @@ class MainMenu():
                              if player.lvl_upgrade_count_bullet < self.max_upgrade_count_bullet else f'Максимальное улучшение! | {int(player.lvl_upgrade_count_bullet)} lvl')
         if click and pygame.Rect(100, screen_xy[1] - 200, 50, 50).collidepoint(pygame.mouse.get_pos()):
             self.event_buy('count_bullet')
+
+        self.cursor_visual()
 
 
 
