@@ -45,6 +45,8 @@ emulate_config = {
         'lvl_upgrade_hp':float(config.get('Stats', 'lvl_upgrade_hp')),
         'lvl_upgrade_atack_speed':float(config.get('Stats', 'lvl_upgrade_atack_speed')),
         'max_hp':float(config.get('Stats', 'max_hp')),
+        'lvl_upgrade_speed_target':int(config.get('Stats', 'lvl_upgrade_speed_target')),
+        'lvl_upgrade_count_bullet':int(config.get('Stats', 'lvl_upgrade_count_bullet')),
     },
     'target_settings':{
         'speed':float(config.get('Target', "speed")),
@@ -59,7 +61,7 @@ class Player():
             point_multi, coord, color, size,
             speed_down, speed_up, hp, max_coord_y,
             all_points, lvl_upgrade_damage, lvl_upgrade_hp, lvl_upgrade_atack_speed,
-            max_hp):
+            max_hp, lvl_upgrade_speed_target, lvl_upgrade_count_bullet):
 
         self.speed = speed
         self.damage = damage
@@ -81,6 +83,9 @@ class Player():
         self.lvl_upgrade_damage = lvl_upgrade_damage
         self.lvl_upgrade_hp = lvl_upgrade_hp
         self.lvl_upgrade_atack_speed = lvl_upgrade_atack_speed
+        self.lvl_upgrade_speed_target = lvl_upgrade_speed_target
+        self.lvl_upgrade_count_bullet = lvl_upgrade_count_bullet
+        self.last_multi_time = time.time()
 
 
 
@@ -169,10 +174,16 @@ class Player():
         pygame.draw.rect(screen, self.color, (self.coord[0] - self.size/2, self.coord[1] - self.size/2, self.size, self.size)) # 25 вычитаем из-за того что это половина от размера игрока
 
     def player_tick(self):
+        if time.time() - self.last_multi_time >= 5:
+            self.last_multi_time = time.time()
+            self.point_multi = round(self.point_multi + 0.1, 1)
+
+
         if self.hp <= 0:
             self.hp = self.max_hp
             config.set('Stats', 'hp', str(self.max_hp))
             self.score = 0
+            self.point_multi = emulate_config['player_save']['point_multi']
 
 
 
@@ -192,12 +203,39 @@ class Bullets():
     def new_bullet(self):
         self.cd_bullet = player.atack_speed
         if time.time() - self.time_last_bullet > self.cd_bullet:
-            self.bullets_all.append(
-                {'coord':[player.coord[0] - self.width / 2, player.coord[1] - player.size / 2],
-                 'damage':emulate_config['player_save']['damage']
-                 })
-            self.time_last_bullet = time.time()
-            self.actual_targets += 1
+            if player.lvl_upgrade_count_bullet == 0:
+                self.bullets_all.append(
+                    {'coord':[player.coord[0] - self.width / 2, player.coord[1] - player.size / 2],
+                     'damage':emulate_config['player_save']['damage']
+                     })
+                self.time_last_bullet = time.time()
+                self.actual_targets += 1
+
+            elif player.lvl_upgrade_count_bullet == 1:
+                self.bullets_all.append(
+                    {'coord':[player.coord[0] - (self.width / 2 + self.width * 2), player.coord[1] - player.size / 2],
+                     'damage':emulate_config['player_save']['damage']})
+                self.bullets_all.append(
+                    {'coord': [player.coord[0] - (self.width / 2 - self.width * 2), player.coord[1] - player.size / 2],
+                     'damage': emulate_config['player_save']['damage']})
+                self.time_last_bullet = time.time()
+                self.actual_targets += 2
+
+            if player.lvl_upgrade_count_bullet == 2:
+                self.bullets_all.append(
+                    {'coord':[player.coord[0] - self.width / 2, player.coord[1] - player.size / 2],
+                     'damage':emulate_config['player_save']['damage']
+                     })
+                self.bullets_all.append(
+                    {'coord':[player.coord[0] - (self.width / 2 + self.width * 4), player.coord[1] - player.size / 2],
+                     'damage':emulate_config['player_save']['damage']
+                     })
+                self.bullets_all.append(
+                    {'coord':[player.coord[0] - (self.width / 2 - self.width * 4), player.coord[1] - player.size / 2],
+                     'damage':emulate_config['player_save']['damage']
+                     })
+                self.time_last_bullet = time.time()
+                self.actual_targets += 3
 
     def bullet_render(self):
         for bullet in self.bullets_all:
@@ -211,8 +249,8 @@ class Bullets():
                     if self.bullets_all[index_bullet]['coord'][0] > target.all_targets[index_target]['coord'][0] and self.bullets_all[index_bullet]['coord'][0] < target.all_targets[index_target]['coord'][0] + target.all_targets[index_target]['size']:
                         if self.bullets_all[index_bullet]['coord'][1] > target.all_targets[index_target]['coord'][1] and self.bullets_all[index_bullet]['coord'][1] < target.all_targets[index_target]['coord'][1] + target.all_targets[index_target]['size']:
                             if player.damage == 2 and target.all_targets[index_target]['size'] < 125:
-                                player.score += 10 * emulate_config['player_save']['point_multi']
-                                player.all_points += 10 * emulate_config['player_save']['point_multi']
+                                player.score += 10 * player.point_multi
+                                player.all_points += 10 * player.point_multi
                             else:
                                 player.score += 5 * emulate_config['player_save']['point_multi']
                                 player.all_points += 5 * emulate_config['player_save']['point_multi']
@@ -231,8 +269,10 @@ class Bullets():
                 self.bullets_all.pop(index)
                 self.actual_targets -= 1
         except: pass
-        for index in self.delete_targets:
-            target.all_targets.pop(index)
+        try:
+            for index in self.delete_targets:
+                target.all_targets.pop(index)
+        except: pass
         self.delete_bullets = []
         self.delete_targets = []
 
@@ -296,6 +336,10 @@ class MainMenu():
         self.max_upgrade_hp = 5
         self.cost_atack_speed = 75
         self.max_atack_speed = 4
+        self.cost_upgrade_speed_target = 100
+        self.max_upgrade_speed_target = 2
+        self.cost_upgrade_count_bullet = 100
+        self.max_upgrade_count_bullet = 2
 
     def new_mini_button(self, coord, text='test'): # Размер кнопок всегда 50
         font_text = pygame.font.SysFont('Comic Sans MS', 25)
@@ -337,6 +381,26 @@ class MainMenu():
             save_config()
             read_config()
 
+        elif type_event == 'speed_target' and player.all_points >= self.cost_upgrade_speed_target and player.lvl_upgrade_speed_target < self.max_upgrade_speed_target:
+            config.set('Stats', 'all_points', f'{player.all_points - self.cost_upgrade_speed_target}')
+            config.set('Stats', 'lvl_upgrade_speed_target', f'{player.lvl_upgrade_speed_target + 1}')
+            config.set('Target', 'speed', f'{target.speed - 1}')
+            emulate_config['target_settings']['speed'] = target.speed - 1
+            player.all_points -= self.cost_upgrade_speed_target
+            player.lvl_upgrade_speed_target += 1
+            target.speed -= 1
+            save_config()
+            read_config()
+
+        elif type_event == 'count_bullet' and player.all_points >= self.cost_upgrade_count_bullet and player.lvl_upgrade_count_bullet < self.max_upgrade_count_bullet:
+            config.set('Stats', 'all_points', f'{player.all_points - self.cost_upgrade_count_bullet}')
+            config.set('Stats', 'lvl_upgrade_count_bullet', f'{player.lvl_upgrade_count_bullet + 1}')
+            emulate_config['player_save']['lvl_upgrade_count_bullet'] = player.lvl_upgrade_count_bullet + 1
+            player.all_points -= self.cost_upgrade_count_bullet
+            player.lvl_upgrade_count_bullet += 1
+            save_config()
+            read_config()
+
     def menu_render(self):
         pygame.draw.rect(screen, (255, 255, 255), (screen_xy[0] // 2 - self.widht // 2, screen_xy[1] // 2 - self.height // 2, self.widht, self.height))
 
@@ -350,24 +414,34 @@ class MainMenu():
         font_text_1 = pygame.font.SysFont('Comic Sans MS', 25)
         screen.blit(font_text_1.render(f'Баланс {int(player.all_points)} поинтов', True, (255, 255, 255)), (100, 100 + 2.5))
 
-        self.new_mini_button([100, screen_xy[1] - 400],
+        self.new_mini_button([100, screen_xy[1] - 600],
                              f'Улучшить урон за {int(self.cost_upgrade_damage)} поинтов | {int(player.lvl_upgrade_damage)} lvl' if player.lvl_upgrade_damage < self.max_upgrade_damage
                              else f'Максимальное улучшение! | {int(player.lvl_upgrade_damage)} lvl')
-        if click and pygame.Rect(100, screen_xy[1] - 400, 50, 50).collidepoint(pygame.mouse.get_pos()):
+        if click and pygame.Rect(100, screen_xy[1] - 600, 50, 50).collidepoint(pygame.mouse.get_pos()):
             self.event_buy('damage')
 
-        self.new_mini_button([100, screen_xy[1] - 300], f'Улучшить хп за {int(self.cost_upgrade_hp)} поинтов | {int(player.lvl_upgrade_hp)} lvl'
+        self.new_mini_button([100, screen_xy[1] - 500], f'Улучшить хп за {int(self.cost_upgrade_hp)} поинтов | {int(player.lvl_upgrade_hp)} lvl'
                             if player.lvl_upgrade_hp < self.max_upgrade_hp else f'Максимальное улучшение! | {int(player.lvl_upgrade_hp)} lvl')
-        if click and pygame.Rect(100, screen_xy[1] - 300, 50, 50).collidepoint(pygame.mouse.get_pos()):
+        if click and pygame.Rect(100, screen_xy[1] - 500, 50, 50).collidepoint(pygame.mouse.get_pos()):
             self.event_buy('hp')
 
-        self.new_mini_button([100, screen_xy[1] - 200],
+        self.new_mini_button([100, screen_xy[1] - 400],
                              f'Улучшить скорость атаки за {int(self.cost_atack_speed)} поинтов | {int(player.lvl_upgrade_atack_speed)} lvl'
-                             if player.lvl_upgrade_atack_speed < self.max_atack_speed else f'Максимальное улучшение! | {int(player.lvl_upgrade_atack_speed)} lvl'
-                             )
-        if click and pygame.Rect(100, screen_xy[1] - 200, 50, 50).collidepoint(pygame.mouse.get_pos()):
+                             if player.lvl_upgrade_atack_speed < self.max_atack_speed else f'Максимальное улучшение! | {int(player.lvl_upgrade_atack_speed)} lvl')
+        if click and pygame.Rect(100, screen_xy[1] - 400, 50, 50).collidepoint(pygame.mouse.get_pos()):
             self.event_buy('atack_speed')
 
+        self.new_mini_button([100, screen_xy[1] - 300],
+                             f'Улучшить замедление мишеней за {int(self.cost_upgrade_speed_target)} поинтов | {int(player.lvl_upgrade_speed_target)} lvl'
+                             if player.lvl_upgrade_speed_target < self.max_upgrade_speed_target else f'Максимальное улучшение! | {int(player.lvl_upgrade_speed_target)} lvl')
+        if click and pygame.Rect(100, screen_xy[1] - 300, 50, 50).collidepoint(pygame.mouse.get_pos()):
+            self.event_buy('speed_target')
+
+        self.new_mini_button([100, screen_xy[1] - 200],
+                             f'Улучшить количество пулей за {int(self.cost_upgrade_count_bullet)} поинтов | {int(player.lvl_upgrade_count_bullet)} lvl'
+                             if player.lvl_upgrade_count_bullet < self.max_upgrade_count_bullet else f'Максимальное улучшение! | {int(player.lvl_upgrade_count_bullet)} lvl')
+        if click and pygame.Rect(100, screen_xy[1] - 200, 50, 50).collidepoint(pygame.mouse.get_pos()):
+            self.event_buy('count_bullet')
 
 
 
@@ -392,6 +466,8 @@ player = Player( # Характеристики игрока
     lvl_upgrade_hp=emulate_config['player_save']['lvl_upgrade_hp'],
     lvl_upgrade_atack_speed=emulate_config['player_save']['lvl_upgrade_atack_speed'],
     max_hp=emulate_config['player_save']['max_hp'],
+    lvl_upgrade_speed_target=emulate_config['player_save']['lvl_upgrade_speed_target'],
+    lvl_upgrade_count_bullet=emulate_config['player_save']['lvl_upgrade_count_bullet'],
 )
 bullet = Bullets(cd_bullet=emulate_config['player_save']['atack_speed']) # cd_bullet содержит в себе минимальное значение в секундах между выстрелами
 target = Target(
@@ -408,7 +484,7 @@ time_cycle_last = 0
 def start_cycle():
     global menu_status_last
     if game_status == 'menu':
-        pygame.draw.rect(screen, (0, 0, 0), (0, 0, screen_xy[0], screen_xy[1]))
+        pygame.draw.rect(screen, (70, 70, 70), (0, 0, screen_xy[0], screen_xy[1]))
         mainMenu.menu_render()
         menu_status_last = True
 
@@ -445,6 +521,9 @@ def start_cycle():
         # Текст урона
         text_score = font_text.render(f'Урон: {int(player.damage)}', False, (255, 255, 255))
         screen.blit(text_score, (50, 230))
+        # Текст множетеля
+        text_score = font_text.render(f'Множитель: {player.point_multi}', False, (255, 255, 255))
+        screen.blit(text_score, (50, 290))
 
 
         target.target_tick()
