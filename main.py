@@ -14,10 +14,14 @@ font_text = pygame.font.SysFont('Comic Sans MS', 50)
 
 load_image_main_menu = pygame.image.load('Склад фото/Main_menu.png').convert_alpha()
 image_main_menu = pygame.transform.scale(load_image_main_menu, (screen_xy[0], screen_xy[1]))
-load_image_player = pygame.image.load('Склад фото/player.png').convert_alpha()
-image_player = pygame.transform.scale(load_image_player, (50, 50))
 load_image_game_background = pygame.image.load('Склад фото/game_background.png').convert_alpha()
 image_game_background = pygame.transform.scale(load_image_game_background, (screen_xy[0], screen_xy[1]))
+load_image_player_bullet_lvl0 = pygame.image.load('Склад фото/player_bullet_lvl0.png').convert_alpha()
+image_player_bullet_lvl0 = pygame.transform.scale(load_image_player_bullet_lvl0, (90, 68))
+load_image_player_bullet_lvl1 = pygame.image.load('Склад фото/player_bullet_lvl1.png').convert_alpha()
+image_player_bullet_lvl1 = pygame.transform.scale(load_image_player_bullet_lvl1, (90, 68))
+load_image_player_bullet_lvl2 = pygame.image.load('Склад фото/player_bullet_lvl2.png').convert_alpha()
+image_player_bullet_lvl2 = pygame.transform.scale(load_image_player_bullet_lvl2, (90, 68))
 
 # Все возможные гейм статусы: menu - Главное меню, game - Игровой статус
 game_status = 'menu'
@@ -182,7 +186,12 @@ class Player():
     def player_render(self):
         # pygame.draw.rect(screen, self.color, (self.coord[0] - self.size/2, self.coord[1] - self.size/2, self.size, self.size)) # 25 вычитаем из-за того что это половина от размера игрока
         # pygame.draw.rect(screen, (38, 38, 38), (self.coord[0] - self.size/2, self.coord[1] - self.size/2, self.size, self.size), width=5) # 25 вычитаем из-за того что это половина от размера игрока
-        screen.blit(image_player, (self.coord[0] - self.size / 2, self.coord[1] - self.size / 2))
+        if player.lvl_upgrade_count_bullet == 0:
+            screen.blit(image_player_bullet_lvl0, (self.coord[0] - 90 / 2, self.coord[1] - 43))
+        elif player.lvl_upgrade_count_bullet == 1:
+            screen.blit(image_player_bullet_lvl1, (self.coord[0] - 90 / 2, self.coord[1] - 43))
+        elif player.lvl_upgrade_count_bullet == 2:
+            screen.blit(image_player_bullet_lvl2, ((self.coord[0] - 90 / 2, self.coord[1] - 43)))
 
     def player_tick(self):
         if time.time() - self.last_multi_time >= 5:
@@ -250,6 +259,7 @@ class Bullets():
 
     def bullet_render(self):
         for bullet in self.bullets_all:
+            # print(bullet['coord'][0] - player.coord[0])
             bullet = bullet['coord']
             pygame.draw.rect(screen, (255, 55, 55), (bullet[0], bullet[1] - player.size / 2 + self.width, self.width, self.height))
 
@@ -283,6 +293,7 @@ class Bullets():
         try:
             for index in self.delete_targets:
                 target.all_targets.pop(index)
+                target.actual_targets -= 1
         except: pass
         self.delete_bullets = []
         self.delete_targets = []
