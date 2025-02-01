@@ -265,7 +265,7 @@ class Bullets():
 
     def tick(self):
         if target.actual_targets > 0 and self.actual_targets > 0:
-            for index_bullet in range(len(self.bullets_all)):
+            for index_bullet in range(len(self.bullets_all)): # Старый баганный цикл
                 for index_target in range(len(target.all_targets)):
                     if self.bullets_all[index_bullet]['coord'][0] > target.all_targets[index_target]['coord'][0] and self.bullets_all[index_bullet]['coord'][0] < target.all_targets[index_target]['coord'][0] + target.all_targets[index_target]['size']:
                         if self.bullets_all[index_bullet]['coord'][1] > target.all_targets[index_target]['coord'][1] and self.bullets_all[index_bullet]['coord'][1] < target.all_targets[index_target]['coord'][1] + target.all_targets[index_target]['size']:
@@ -550,6 +550,7 @@ def start_cycle():
             target.last_time = 0
             player.score = 0
             player.hp = emulate_config['player_save']['hp']
+            player.point_multi = emulate_config['player_save']['point_multi']
 
         # pygame.draw.rect(screen, (60, 60, 60), (0,0,screen_xy[0],screen_xy[1])) # Старый задний фон
         # pygame.draw.rect(screen, (255, 255, 255), (0, screen_xy[1] - screen_xy[1] / 3, screen_xy[0], screen_xy[1] / 3))
