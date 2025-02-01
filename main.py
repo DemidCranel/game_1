@@ -12,6 +12,13 @@ bullet_speed = 20
 
 font_text = pygame.font.SysFont('Comic Sans MS', 50)
 
+load_image_main_menu = pygame.image.load('Склад фото/Main_menu.png').convert_alpha()
+image_main_menu = pygame.transform.scale(load_image_main_menu, (screen_xy[0], screen_xy[1]))
+load_image_player = pygame.image.load('Склад фото/player.png').convert_alpha()
+image_player = pygame.transform.scale(load_image_player, (50, 50))
+load_image_game_background = pygame.image.load('Склад фото/game_background.png').convert_alpha()
+image_game_background = pygame.transform.scale(load_image_game_background, (screen_xy[0], screen_xy[1]))
+
 # Все возможные гейм статусы: menu - Главное меню, game - Игровой статус
 game_status = 'menu'
 
@@ -173,8 +180,9 @@ class Player():
 
 
     def player_render(self):
-        pygame.draw.rect(screen, self.color, (self.coord[0] - self.size/2, self.coord[1] - self.size/2, self.size, self.size)) # 25 вычитаем из-за того что это половина от размера игрока
-        pygame.draw.rect(screen, (38, 38, 38), (self.coord[0] - self.size/2, self.coord[1] - self.size/2, self.size, self.size), width=5) # 25 вычитаем из-за того что это половина от размера игрока
+        # pygame.draw.rect(screen, self.color, (self.coord[0] - self.size/2, self.coord[1] - self.size/2, self.size, self.size)) # 25 вычитаем из-за того что это половина от размера игрока
+        # pygame.draw.rect(screen, (38, 38, 38), (self.coord[0] - self.size/2, self.coord[1] - self.size/2, self.size, self.size), width=5) # 25 вычитаем из-за того что это половина от размера игрока
+        screen.blit(image_player, (self.coord[0] - self.size / 2, self.coord[1] - self.size / 2))
 
     def player_tick(self):
         if time.time() - self.last_multi_time >= 5:
@@ -431,13 +439,13 @@ class MainMenu():
             pygame.draw.circle(screen, (0, 255, color), (self.cursor_rect[index][0][0], self.cursor_rect[index][0][1]), self.cursor_rect[index][1])
 
     def menu_render(self):
-        pygame.draw.rect(screen, (255, 255, 255), (screen_xy[0] // 2 - self.widht // 2, screen_xy[1] // 2 - self.height // 2, self.widht, self.height))
+        # pygame.draw.rect(screen, (255, 255, 255), (screen_xy[0] // 2 - self.widht // 2 - 30, screen_xy[1] // 2 - self.height // 2 - 21, self.widht + 48, self.height + 28))
 
-        text_start = font_text.render("Старт", True, (0, 0, 0))
-        text_start_rect = text_start.get_rect(center=(self.widht // 2, self.height // 2))
-        text_start_rect.x += screen_xy[0] // 2 - self.widht // 2
-        text_start_rect.y += screen_xy[1] // 2 - self.height // 2
-        screen.blit(text_start, text_start_rect)
+        # text_start = font_text.render("Старт", True, (0, 0, 0))
+        # text_start_rect = text_start.get_rect(center=(self.widht // 2, self.height // 2))
+        # text_start_rect.x += screen_xy[0] // 2 - self.widht // 2
+        # text_start_rect.y += screen_xy[1] // 2 - self.height // 2
+        # screen.blit(text_start, text_start_rect)
 
         # Информация о балансе на экране
         font_text_1 = pygame.font.SysFont('Comic Sans MS', 25)
@@ -515,7 +523,8 @@ time_cycle_last = 0
 def start_cycle():
     global menu_status_last
     if game_status == 'menu':
-        pygame.draw.rect(screen, (70, 70, 70), (0, 0, screen_xy[0], screen_xy[1]))
+        # pygame.draw.rect(screen, (70, 70, 70), (0, 0, screen_xy[0], screen_xy[1]))
+        screen.blit(image_main_menu, (0, 0))
         mainMenu.menu_render()
         menu_status_last = True
 
@@ -531,16 +540,21 @@ def start_cycle():
             player.score = 0
             player.hp = emulate_config['player_save']['hp']
 
-        pygame.draw.rect(screen, (60, 60, 60), (0,0,screen_xy[0],screen_xy[1])) # Задний фон
+        # pygame.draw.rect(screen, (60, 60, 60), (0,0,screen_xy[0],screen_xy[1])) # Старый задний фон
+        # pygame.draw.rect(screen, (255, 255, 255), (0, screen_xy[1] - screen_xy[1] / 3, screen_xy[0], screen_xy[1] / 3))
 
         player.move() # Выполняем функцию передвижения у игрока
 
-        pygame.draw.rect(screen, (255, 255, 255), (0, screen_xy[1] - screen_xy[1] / 3, screen_xy[0], screen_xy[1] / 3))
+        # Задний фон
+        screen.blit(image_game_background, (0, 0))
+
+        target.target_tick()
+        bullet.tick()
+        player.player_tick()
 
         bullet.bullet_render() # Отрисовываем пули
         target.target_render() # Отрисовываем таргет
         player.player_render() # Отрисовываем игрока
-
 
         # Текст здоровья
         text_hp = font_text.render(f'Здоровье: {int(player.hp)} / {int(player.max_hp)}', False, (255, 255, 255))
@@ -558,11 +572,8 @@ def start_cycle():
         text_score = font_text.render(f'Множитель: {player.point_multi}', False, (255, 255, 255))
         screen.blit(text_score, (50, 290))
 
-
-        target.target_tick()
-        bullet.tick()
-        player.player_tick()
         clock.tick(160) # Ограничение фпс
+
 
 
     global time_cycle_last
@@ -584,8 +595,8 @@ while True:
         if event.type == pygame.MOUSEBUTTONDOWN:  # Better to seperate to a new if statement aswell, since there's more buttons that can be clicked and makes for cleaner code.
             if event.button == 1:
                 click = True
-                if (event.pos[0] > screen_xy[0] // 2 - mainMenu.widht // 2 and event.pos[0] < screen_xy[0] // 2 + mainMenu.widht // 2):
-                    if (event.pos[1] > screen_xy[1] // 2 - mainMenu.height // 2 and event.pos[1] < screen_xy[1] // 2 + mainMenu.height // 2):
+                if (event.pos[0] > (screen_xy[0] // 2 - mainMenu.widht // 2) - 30 and event.pos[0] < (screen_xy[0] // 2 + mainMenu.widht // 2) + 18):
+                    if (event.pos[1] > (screen_xy[1] // 2 - mainMenu.height // 2) - 21 and event.pos[1] < (screen_xy[1] // 2 + mainMenu.height // 2) + 7):
                         game_status = 'game'
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE and game_status == 'game':
