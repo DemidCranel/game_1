@@ -22,6 +22,10 @@ load_image_player_bullet_lvl1 = pygame.image.load('Склад фото/player_bu
 image_player_bullet_lvl1 = pygame.transform.scale(load_image_player_bullet_lvl1, (90, 68))
 load_image_player_bullet_lvl2 = pygame.image.load('Склад фото/player_bullet_lvl2.png').convert_alpha()
 image_player_bullet_lvl2 = pygame.transform.scale(load_image_player_bullet_lvl2, (90, 68))
+load_image_meteorit = pygame.image.load('Склад фото/meteorit.png').convert_alpha()
+load_image_meteorit_v2 = pygame.image.load('Склад фото/meteorit_v2.png').convert_alpha()
+# pygame.transform.scale(load_image_meteorit, (90, 68))
+# pygame.transform.scale(load_image_meteorit_v2, (90, 68))
 
 # Все возможные гейм статусы: menu - Главное меню, game - Игровой статус
 game_status = 'menu'
@@ -340,12 +344,10 @@ class Target():
 
     def target_render(self):
         for target in self.all_targets:
-            pygame.draw.rect(screen, target['color'], (target['coord'][0], target['coord'][1], target['size'], target['size']))
-            if target['color'] == (247, 143, 57) or target['color'] == (0, 255, 9):
-                pygame.draw.rect(screen, ((189, 106, 38) if target['size'] > 125 else (0, 161, 5)), (target['coord'][0], target['coord'][1], target['size'], target['size']),
-                                 width=5 if target['size'] < 125 else 10)
-            elif target['color'] == (204, 255, 0):
-                pygame.draw.rect(screen, (133, 166, 0), (target['coord'][0], target['coord'][1], target['size'], target['size']), width=5)
+            if target['size'] < 125:
+                screen.blit(pygame.transform.scale(load_image_meteorit, (target['size'], target['size'])), (target['coord'][0], target['coord'][1]))
+            else:
+                screen.blit(pygame.transform.scale(load_image_meteorit_v2, (target['size'], target['size'])), (target['coord'][0], target['coord'][1]))
 
 menu_button_count = 0
 
